@@ -17,6 +17,23 @@ with col1:
 with col2:
     dec_input = st.number_input("Declination (DEC)", min_value=-90.0, max_value=90.0, value=41.2)
 
+# Add this helper function to generate the image URL
+
+def get_legacy_survey_image_url(ra, dec):
+    """
+    Fetches an image from the DESI Legacy Imaging Surveys.
+    """
+    # layer=ls-dr10: Data Release 10 (most recent)
+    # size=400: Image size in pixels
+    # pixscale=0.262: Resolution (standard for Legacy Survey)
+    return f"https://www.legacysurvey.org/viewer/cutout.jpg?ra={ra}&dec={dec}&layer=ls-dr10&size=400&pixscale=0.262"
+
+st.subheader("Target Visualization")
+
+image_url = get_legacy_survey_image_url(ra_input, dec_input)
+
+st.image(image_url, caption=f"Legacy Survey View (RA: {ra_input}, DEC: {dec_input})", use_container_width=False)
+
 # 2. Action Button
 if st.button("Classify Object", type="primary"):
     
