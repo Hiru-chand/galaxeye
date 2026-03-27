@@ -17,3 +17,4 @@ streamlit
 requests
 astroquery
 astropy
+plotly-express
