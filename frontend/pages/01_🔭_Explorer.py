@@ -386,8 +386,9 @@ st.title("🔭 Celestial Explorer")
 if 'ra' not in st.session_state: st.session_state['ra'] = 10.6847
 if 'dec' not in st.session_state: st.session_state['dec'] = 41.2687
 if 'prediction_result' not in st.session_state: st.session_state['prediction_result'] = None
+if 'debug_info' not in st.session_state: st.session_state['debug_info'] = None
 
-tab_input, tab_map = st.tabs(["📝 Classification & Target", "🗺️ Interactive Explorer"])
+tab_input, tab_map, tab_debug = st.tabs(["📝 Classification & Target", "🗺️ Interactive Explorer", "🔧 Debug"])
 
 with tab_input:
     col_target, col_photo = st.columns([1, 1.2], gap="large")
@@ -427,93 +428,166 @@ with tab_input:
             r = m3.number_input("r-mag", value=18.87)
             
             m4, m5, m6, m7 = st.columns(4)
-            i, z = m4.number_input("i-mag", value=18.61), m5.number_input("z-mag", value=18.58)
-            w1, w2 = m6.number_input("W1 (IR)", value=14.80), m7.number_input("W2 (IR)", value=14.01)
+            i = m4.number_input("i-mag", value=18.61)
+            z = m5.number_input("z-mag", value=18.58)
+            w1 = m6.number_input("W1 (IR)", value=14.80)
+            w2 = m7.number_input("W2 (IR)", value=14.01)
 
             if st.button("Run Classification Analysis", type="primary"):
                 try:
-                    res = get_prediction({"u": u, "g": g, "r": r, "i": i, "z": z, "w1": w1, "w2": w2})
+                    payload = {"u": u, "g": g, "r": r, "i": i, "z": z, "w1": w1, "w2": w2}
+                    res = get_prediction(payload)
                     st.session_state['prediction_result'] = res
+                    st.session_state['debug_info'] = {
+                        'payload': payload,
+                        'response': res,
+                        'timestamp': pd.Timestamp.now()
+                    }
+                    st.rerun()
                 except Exception as e:
                     st.error(f"Backend Offline: {e}")
+                    st.session_state['debug_info'] = {'error': str(e)}
 
-        #--- RESULTS & ANOMALY DETECTION (FR11) ---
+        #--- RESULTS & ANOMALY DETECTION ---
         if st.session_state['prediction_result']:
             res = st.session_state['prediction_result']
             st.divider()
             
-            # 1. Calculation
-            conf_val = res['confidence'] * 100 if res['confidence'] <= 1 else res['confidence']
+            # Debug: Show what we received
+            with st.expander("📡 Raw API Response"):
+                st.json(res)
             
-            # 2. Display Metrics
+            # Calculate confidence
+            if isinstance(res.get('confidence'), (int, float)):
+                conf_val = res['confidence'] * 100 if res['confidence'] <= 1 else res['confidence']
+            else:
+                conf_val = 0.0
+            
+            # Display Metrics
             r1, r2 = st.columns(2)
-            r1.metric("Predicted Class", res['prediction'])
+            r1.metric("Predicted Class", res.get('prediction', 'Unknown'))
             r2.metric("Confidence Score", f"{conf_val:.2f}%")
 
-            # 3. ANOMALY DETECTION LOGIC (FR11)
+            # Anomaly Detection
             if conf_val < 50:
-                st.warning("""
-                    ⚠️ **ANOMALY DETECTED** The model's confidence is below the 50% threshold. This object may be:
-                    * A rare transient (Supernova/Variable Star)
-                    * An out-of-distribution data artifact
-                    * An overlapping/blended source
-                """)
-            elif res['prediction'] == "QSO" and conf_val < 70:
+                st.warning("⚠️ **ANOMALY DETECTED:** Model uncertainty is high. This may be a rare transient or data artifact.")
+            elif res.get('prediction') == "QSO" and conf_val < 70:
                 st.info("💡 **Note:** Quasars (QSO) often mimic Star-like profiles in optical data.")
 
-            # 4. FIXED: Confidence Chart with proper length handling
+            # Handle the probabilities
             st.write("### 📊 Probability Distribution")
             
-            # Get the actual class labels from the backend or define them based on your model
-            # First, let's check what the backend is returning
-            st.write("DEBUG - Raw Backend Response:", res)
-            
-            # Define the expected class order based on your model
-            # Update these labels to match exactly what your model outputs
-            expected_classes = ['GALAXY', 'QSO', 'STAR']
             probabilities = res.get('probabilities', [])
             
-            # Debug: Show lengths
-            st.write(f"DEBUG - Expected classes length: {len(expected_classes)}")
-            st.write(f"DEBUG - Probabilities length: {len(probabilities)}")
+            # Let's check if the probabilities array is actually 3 elements but got truncated in display
+            st.write(f"**Probabilities array length:** {len(probabilities)}")
+            st.write(f"**Probabilities values:** {probabilities}")
             
-            # Check if lengths match
-            if len(probabilities) != len(expected_classes):
-                st.warning(f"⚠️ Class count mismatch: Model returned {len(probabilities)} probabilities but expected {len(expected_classes)} classes.")
-                st.info("Using available data for visualization...")
+            # Try to get class labels if available
+            class_labels = res.get('class_labels', ['GALAXY', 'QSO', 'STAR'])
+            
+            # Check if we have a mapping in the response
+            if 'probabilities_dict' in res:
+                # If the backend sends a dictionary with class names
+                prob_dict = res['probabilities_dict']
+                chart_data = pd.DataFrame({
+                    'Class': list(prob_dict.keys()),
+                    'Probability': [v * 100 if v <= 1 else v for v in prob_dict.values()]
+                }).set_index('Class')
+                st.bar_chart(chart_data)
+                st.caption("Probability distribution for each celestial class.")
                 
-                # If the probabilities array has different length, we need to adapt
-                # Option 1: If probabilities is shorter, pad with zeros
-                # Option 2: If probabilities is longer, trim or use class labels from backend if available
+            elif len(probabilities) == 3:
+                # Perfect - 3 class classifier
+                prob_percentages = [p * 100 if p <= 1 else p for p in probabilities]
+                chart_data = pd.DataFrame({
+                    'Class': class_labels[:3],
+                    'Probability': prob_percentages
+                }).set_index('Class')
+                st.bar_chart(chart_data)
+                st.caption("The chart shows the raw probability distribution for each celestial class.")
                 
-                # Try to get class labels from the backend response
-                if 'class_labels' in res:
-                    # Use the labels from backend
-                    class_labels = res['class_labels']
-                    prob_values = probabilities
-                else:
-                    # Generate generic labels if we don't have proper ones
-                    class_labels = [f"Class_{i}" for i in range(len(probabilities))]
-                    prob_values = probabilities
+            elif len(probabilities) == 2:
+                # This suggests the model might be outputting logits or something else
+                st.warning("⚠️ The model returned only 2 probabilities, but we expect 3 classes.")
+                st.info("This might indicate that the model is outputting logits instead of softmax probabilities, or there's a mismatch in the model output layer.")
+                
+                # Try to interpret - maybe the first value is for the predicted class?
+                # Let's create a synthetic 3-class distribution based on the prediction
+                predicted_class = res.get('prediction', 'GALAXY')
+                prob_map = {'GALAXY': 0, 'QSO': 1, 'STAR': 2}
+                
+                synthetic_probs = [0.0, 0.0, 0.0]
+                if predicted_class in prob_map:
+                    idx = prob_map[predicted_class]
+                    if len(probabilities) >= 1:
+                        synthetic_probs[idx] = probabilities[0] if probabilities[0] <= 1 else probabilities[0] / 100
+                    if len(probabilities) >= 2:
+                        # Distribute remaining probability
+                        remaining = 1 - synthetic_probs[idx]
+                        for i in range(3):
+                            if i != idx:
+                                synthetic_probs[i] = remaining / 2
+                
+                prob_percentages = [p * 100 for p in synthetic_probs]
+                chart_data = pd.DataFrame({
+                    'Class': class_labels[:3],
+                    'Probability': prob_percentages
+                }).set_index('Class')
+                st.bar_chart(chart_data)
+                st.caption("⚠️ **Note:** Synthetic probabilities created from binary output. Check your model configuration.")
+                
             else:
-                # All good, use the expected classes
-                class_labels = expected_classes
-                prob_values = probabilities
-            
-            # Convert probabilities to percentages for display
-            prob_percentages = [p * 100 if p <= 1 else p for p in prob_values]
-            
-            # Create the DataFrame with matching lengths
-            chart_data = pd.DataFrame({
-                'Class': class_labels,
-                'Probability': prob_percentages
-            }).set_index('Class')
-            
-            # Display the bar chart
-            st.bar_chart(chart_data)
-            
-            # Add explanation
-            st.caption("The chart shows the raw probability distribution for each celestial class.")
+                st.error(f"Unexpected probability format. Expected 3 probabilities, got {len(probabilities)}")
+                st.write("Raw response for debugging:")
+                st.json(res)
+                
+                # Create dummy data to avoid breaking the UI
+                chart_data = pd.DataFrame({
+                    'Class': ['GALAXY', 'QSO', 'STAR'],
+                    'Probability': [33.33, 33.33, 33.33]
+                }).set_index('Class')
+                st.bar_chart(chart_data)
 
 with tab_map:
     components.iframe(f"https://www.legacysurvey.org/viewer/?ra={st.session_state.ra}&dec={st.session_state.dec}&layer=ls-dr10&zoom=13", height=700)
+
+with tab_debug:
+    st.subheader("🔧 Debug Information")
+    
+    if st.session_state.get('debug_info'):
+        debug_info = st.session_state['debug_info']
+        
+        if 'error' in debug_info:
+            st.error(f"Error: {debug_info['error']}")
+        else:
+            st.write("**Last Request:**")
+            st.json(debug_info.get('payload', {}))
+            
+            st.write("**Last Response:**")
+            st.json(debug_info.get('response', {}))
+            
+            st.write("**Timestamp:**", debug_info.get('timestamp', 'N/A'))
+            
+            # Check the API endpoint
+            st.write("**API Configuration Check:**")
+            try:
+                from utils.api_client import API_URL
+                st.write(f"API_URL: {API_URL}")
+            except:
+                st.write("Could not import API_URL")
+    else:
+        st.info("Run a classification to see debug information.")
+    
+    # Add a section to test API connectivity
+    st.subheader("API Connection Test")
+    if st.button("Test API Connection"):
+        try:
+            from utils.api_client import API_URL, get_prediction
+            test_payload = {"u": 19.43, "g": 19.03, "r": 18.87, "i": 18.61, "z": 18.58, "w1": 14.80, "w2": 14.01}
+            result = get_prediction(test_payload)
+            st.success("✅ API is reachable!")
+            st.write("Response structure:")
+            st.json(result)
+        except Exception as e:
+            st.error(f"❌ API connection failed: {e}")
