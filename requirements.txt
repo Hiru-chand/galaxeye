@@ -1,8 +1,19 @@
-fastapi
-uvicorn
-pydantic
-streamlit
-requests
+# frontend/backend shared
 pandas
 numpy
-pytest
+joblib
+scikit-learn
+matplotlib
+plotly
+
+# backend specific
+fastapi
+uvicorn
+python-multipart
+pydantic
+
+# frontend specific
+streamlit
+requests
+astroquery
+astropy

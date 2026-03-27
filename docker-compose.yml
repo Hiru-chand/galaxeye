@@ -1,0 +1,16 @@
+services:
+  backend:
+    build:
+      context: .          # This says: Look at the whole 'galaxeye' folder
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: .          # This allows access to requirements.txt in root
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "8501:8501"
+    depends_on:
+      - backend
