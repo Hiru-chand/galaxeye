@@ -1,6 +1,8 @@
 import requests
+import os
 
-BACKEND_URL = "http://backend:8000"
+# This looks for the Railway variable first, then falls back to local for your PC
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 def get_prediction(payload):
     response = requests.post(f"{BACKEND_URL}/classify", json=payload)
