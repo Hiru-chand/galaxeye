@@ -368,13 +368,46 @@ with tab_input:
                 st.info("💡 **Note:** Quasars (QSO) often mimic Star-like profiles in optical data.")
 
             # 4. Confidence Chart
-            st.write("### 📊 Probability Distribution")
-            chart_data = pd.DataFrame({
-                'Class': ['GALAXY', 'QSO', 'STAR'],
-                'Probability': [round(p * 100, 2) for p in res['probabilities']]
-            }).set_index('Class')
+            # st.write("### 📊 Probability Distribution")
+            # chart_data = pd.DataFrame({
+            #     'Class': ['GALAXY', 'QSO', 'STAR'],
+            #     'Probability': [round(p * 100, 2) for p in res['probabilities']]
+            # }).set_index('Class')
             
-            st.bar_chart(chart_data)
+            # st.bar_chart(chart_data)
+
+            # 4. Confidence Chart (Fixed & Enhanced)
+            st.write("### 📊 Probability Distribution")
+            
+            try:
+                # Get probabilities from result
+                probs = res.get('probabilities', [])
+                
+                # Define labels based on the standard order used in your model training
+                # IMPORTANT: Ensure this order matches your label encoder/model classes
+                labels = ['GALAXY', 'QSO', 'STAR']
+                
+                # Check for length mismatch to avoid the ValueError
+                if len(probs) == len(labels):
+                    chart_df = pd.DataFrame({
+                        'Object Class': labels,
+                        'Confidence (%)': [round(p * 100, 2) if p <= 1 else round(p, 2) for p in probs]
+                    })
+                    
+                    # Using st.bar_chart for simplicity, or plotly for better UI
+                    st.bar_chart(chart_df.set_index('Object Class'))
+                    
+                else:
+                    # Fallback: If lengths don't match, create a generic chart based on what we received
+                    st.warning(f"Note: Displaying raw output. Model returned {len(probs)} probability scores.")
+                    chart_df = pd.DataFrame({
+                        'Raw Index': [f"Class {i}" for i in range(len(probs))],
+                        'Score': probs
+                    })
+                    st.bar_chart(chart_df.set_index('Raw Index'))
+                    
+            except Exception as e:
+                st.error(f"Could not render confidence chart: {e}")
 
 with tab_map:
     components.iframe(f"https://www.legacysurvey.org/viewer/?ra={st.session_state.ra}&dec={st.session_state.dec}&layer=ls-dr10&zoom=13", height=700)
