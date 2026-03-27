@@ -341,99 +341,99 @@ with tab_input:
                 except Exception as e:
                     st.error(f"Backend Offline: {e}")
 
-        # --- RESULTS & ANOMALY DETECTION (FR11) ---
-        # if st.session_state['prediction_result']:
-        #     res = st.session_state['prediction_result']
-        #     st.divider()
+        #--- RESULTS & ANOMALY DETECTION (FR11) ---
+        if st.session_state['prediction_result']:
+            res = st.session_state['prediction_result']
+            st.divider()
             
-        #     # 1. Calculation
-        #     # Standardize confidence to 0-100
-        #     conf_val = res['confidence'] * 100 if res['confidence'] <= 1 else res['confidence']
+            # 1. Calculation
+            # Standardize confidence to 0-100
+            conf_val = res['confidence'] * 100 if res['confidence'] <= 1 else res['confidence']
             
-        #     # 2. Display Metrics
-        #     r1, r2 = st.columns(2)
-        #     r1.metric("Predicted Class", res['prediction'])
-        #     r2.metric("Confidence Score", f"{conf_val:.2f}%")
+            # 2. Display Metrics
+            r1, r2 = st.columns(2)
+            r1.metric("Predicted Class", res['prediction'])
+            r2.metric("Confidence Score", f"{conf_val:.2f}%")
 
-        #     # 3. ANOMALY DETECTION LOGIC (FR11)
-        #     # If confidence is low, or if the gap between top 2 classes is small
-        #     if conf_val < 50:
-        #         st.warning("""
-        #             ⚠️ **ANOMALY DETECTED** The model's confidence is below the 50% threshold. This object may be:
-        #             * A rare transient (Supernova/Variable Star)
-        #             * An out-of-distribution data artifact
-        #             * An overlapping/blended source
-        #         """)
-        #     elif res['prediction'] == "QSO" and conf_val < 70:
-        #         st.info("💡 **Note:** Quasars (QSO) often mimic Star-like profiles in optical data.")
+            # 3. ANOMALY DETECTION LOGIC (FR11)
+            # If confidence is low, or if the gap between top 2 classes is small
+            if conf_val < 50:
+                st.warning("""
+                    ⚠️ **ANOMALY DETECTED** The model's confidence is below the 50% threshold. This object may be:
+                    * A rare transient (Supernova/Variable Star)
+                    * An out-of-distribution data artifact
+                    * An overlapping/blended source
+                """)
+            elif res['prediction'] == "QSO" and conf_val < 70:
+                st.info("💡 **Note:** Quasars (QSO) often mimic Star-like profiles in optical data.")
 
-            # 4. Confidence Chart
-            # st.write("### 📊 Probability Distribution")
-            # chart_data = pd.DataFrame({
-            #     'Class': ['GALAXY', 'QSO', 'STAR'],
-            #     'Probability': [round(p * 100, 2) for p in res['probabilities']]
-            # }).set_index('Class')
+            #4. Confidence Chart
+            st.write("### 📊 Probability Distribution")
+            chart_data = pd.DataFrame({
+                'Class': ['GALAXY', 'QSO', 'STAR'],
+                'Probability': [round(p * 100, 2) for p in res['probabilities']]
+            }).set_index('Class')
             
-            # st.bar_chart(chart_data)
+            st.bar_chart(chart_data)
 
-        # --- RESULTS & ANOMALY DETECTION ---
-        import plotly.express as px
-if st.session_state['prediction_result']:
-    res = st.session_state['prediction_result']
-    st.divider()
+#         # --- RESULTS & ANOMALY DETECTION ---
+#         import plotly.express as px
+# if st.session_state['prediction_result']:
+#     res = st.session_state['prediction_result']
+#     st.divider()
     
-    # Standardize confidence
-    conf_val = res['confidence'] * 100 if res['confidence'] <= 1 else res['confidence']
+#     # Standardize confidence
+#     conf_val = res['confidence'] * 100 if res['confidence'] <= 1 else res['confidence']
     
-    # 1. THE ANOMALY CHECK (This must come FIRST)
-    if conf_val < 50:
-        st.error("⚠️ **CRITICAL ANOMALY DETECTED**")
-        st.warning(f"The system cannot reliably classify this data (Confidence: {conf_val:.2f}%).")
-        st.info("Input data likely represents noise, a data artifact, or an unknown celestial transient.")
-    else:
-        # 2. Regular Display if confidence is high
-        r1, r2 = st.columns(2)
-        r1.metric("Predicted Class", res['prediction'])
-        r2.metric("Confidence Score", f"{conf_val:.2f}%")
+#     # 1. THE ANOMALY CHECK (This must come FIRST)
+#     if conf_val < 50:
+#         st.error("⚠️ **CRITICAL ANOMALY DETECTED**")
+#         st.warning(f"The system cannot reliably classify this data (Confidence: {conf_val:.2f}%).")
+#         st.info("Input data likely represents noise, a data artifact, or an unknown celestial transient.")
+#     else:
+#         # 2. Regular Display if confidence is high
+#         r1, r2 = st.columns(2)
+#         r1.metric("Predicted Class", res['prediction'])
+#         r2.metric("Confidence Score", f"{conf_val:.2f}%")
 
-    # 3. CORRECTED CHART (Fixed yaxis_range error)
-    st.write("### 📊 Probability Distribution")
+#     # 3. CORRECTED CHART (Fixed yaxis_range error)
+#     st.write("### 📊 Probability Distribution")
     
-    # Ensure labels match your specific model order
-    target_labels = ['QSO', 'GALAXY', 'STAR'] 
-    raw_probs = res.get('probabilities', [])
+#     # Ensure labels match your specific model order
+#     target_labels = ['QSO', 'GALAXY', 'STAR'] 
+#     raw_probs = res.get('probabilities', [])
     
-    display_probs = []
-    for i in range(len(target_labels)):
-        if i < len(raw_probs):
-            p = raw_probs[i]
-            display_probs.append(p * 100 if p <= 1 else p)
-        else:
-            display_probs.append(0.0)
+#     display_probs = []
+#     for i in range(len(target_labels)):
+#         if i < len(raw_probs):
+#             p = raw_probs[i]
+#             display_probs.append(p * 100 if p <= 1 else p)
+#         else:
+#             display_probs.append(0.0)
 
-    chart_df = pd.DataFrame({'Type': target_labels, 'Conf %': display_probs})
+#     chart_df = pd.DataFrame({'Type': target_labels, 'Conf %': display_probs})
     
-    # Create the figure
-    fig = px.bar(
-        chart_df, 
-        x='Type', 
-        y='Conf %', 
-        color='Type',
-        text=[f"{p:.1f}%" for p in display_probs], # Adds percentage labels on top of bars
-        color_discrete_map={'GALAXY':'#3b82f6','QSO':'#ef4444','STAR':'#10b981'},
-        template="plotly_dark"
-    )
+#     # Create the figure
+#     fig = px.bar(
+#         chart_df, 
+#         x='Type', 
+#         y='Conf %', 
+#         color='Type',
+#         text=[f"{p:.1f}%" for p in display_probs], # Adds percentage labels on top of bars
+#         color_discrete_map={'GALAXY':'#3b82f6','QSO':'#ef4444','STAR':'#10b981'},
+#         template="plotly_dark"
+#     )
 
-    # Correct way to set the Y-axis range and clean up the look
-    fig.update_layout(
-        showlegend=False, 
-        height=450,
-        yaxis_title="Confidence Level (%)",
-        xaxis_title="Celestial Classification",
-        yaxis=dict(range=[0, 100]) # This replaces the broken yaxis_range
-    )
+#     # Correct way to set the Y-axis range and clean up the look
+#     fig.update_layout(
+#         showlegend=False, 
+#         height=450,
+#         yaxis_title="Confidence Level (%)",
+#         xaxis_title="Celestial Classification",
+#         yaxis=dict(range=[0, 100]) # This replaces the broken yaxis_range
+#     )
     
-    st.plotly_chart(fig, use_container_width=True)
+#     st.plotly_chart(fig, use_container_width=True)
 
 with tab_map:
     components.iframe(f"https://www.legacysurvey.org/viewer/?ra={st.session_state.ra}&dec={st.session_state.dec}&layer=ls-dr10&zoom=13", height=700)
