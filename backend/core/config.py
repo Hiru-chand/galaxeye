@@ -7,7 +7,7 @@ class Settings:
     ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "admin123")
     
     # Paths
-    MODEL_PATH: str = "model_artifacts/astro_classifier_model.pkl"
+    MODEL_PATH: str = "model_artifacts/galaxeye_classifier_model.pkl"
     DATA_PATH: str = "cleaned_star_galaxy_quasar_data.csv"
     
     # API URL for Frontend
