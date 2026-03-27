@@ -373,7 +373,7 @@ with tab_input:
                 'Class': ['GALAXY', 'QSO', 'STAR'],
                 'Probability': [round(p * 100, 2) for p in res['probabilities']]
             }).set_index('Class')
-            
+            st.write("DEBUG - Raw Backend Response:", res)
             st.bar_chart(chart_data)
 
 #         # --- RESULTS & ANOMALY DETECTION ---
