@@ -376,63 +376,47 @@ with tab_input:
             
             # st.bar_chart(chart_data)
 
-        # --- RESULTS & ANOMALY DETECTION (FR11) ---
-        if st.session_state['prediction_result']:
-            res = st.session_state['prediction_result']
-            st.divider()
-            
-            # 1. Standardize confidence to 0-100 scale
-            conf_val = res['confidence'] * 100 if res['confidence'] <= 1 else res['confidence']
-            
-            # 2. Display Metrics
-            r1, r2 = st.columns(2)
-            r1.metric("Predicted Class", res['prediction'])
-            r2.metric("Confidence Score", f"{conf_val:.2f}%")
+        # --- RESULTS & ANOMALY DETECTION ---
+if st.session_state['prediction_result']:
+    res = st.session_state['prediction_result']
+    st.divider()
+    
+    # Standardize confidence
+    conf_val = res['confidence'] * 100 if res['confidence'] <= 1 else res['confidence']
+    
+    # 1. THE ANOMALY CHECK (This must come FIRST)
+    if conf_val < 50:
+        st.error("⚠️ **CRITICAL ANOMALY DETECTED**")
+        st.warning(f"The system cannot reliably classify this data (Confidence: {conf_val:.2f}%).")
+        st.info("Input data likely represents noise, a data artifact, or an unknown celestial transient.")
+    else:
+        # 2. Regular Display if confidence is high
+        r1, r2 = st.columns(2)
+        r1.metric("Predicted Class", res['prediction'])
+        r2.metric("Confidence Score", f"{conf_val:.2f}%")
 
-            # 3. ANOMALY DETECTION POPUP (Fixed Logic)
-            if conf_val < 50:
-                st.warning(f"""
-                    ⚠️ **ANOMALY DETECTED**
-                    The model's confidence is only {conf_val:.2f}%, which is below the 50% threshold. 
-                    This object may be a rare transient, a data artifact, or a blended source.
-                """)
-            elif res['prediction'] == "QSO" and conf_val < 70:
-                st.info("💡 **Note:** Quasars (QSO) often share photometric similarities with specific star types.")
+    # 3. FORCE CHART LABELS
+    st.write("### 📊 Probability Distribution")
+    
+    # Ensure we always show 3 bars
+    target_labels = ['GALAXY', 'QSO', 'STAR'] 
+    raw_probs = res.get('probabilities', [])
+    
+    # If the model sends 2 values (like in your screenshot), we pad it
+    display_probs = []
+    for i in range(len(target_labels)):
+        if i < len(raw_probs):
+            p = raw_probs[i]
+            display_probs.append(p * 100 if p <= 1 else p)
+        else:
+            display_probs.append(0.0)
 
-            # 4. FIXED PROBABILITY DISTRIBUTION CHART
-            st.write("### 📊 Probability Distribution")
-            
-            # Labels you explicitly want
-            target_labels = ['GALAXY', 'QSO', 'STAR']
-            raw_probs = res.get('probabilities', [])
-
-            # Force alignment: If model sends fewer than 3, pad with 0.0
-            # If it sends more, take the first 3.
-            display_probs = []
-            for i in range(len(target_labels)):
-                if i < len(raw_probs):
-                    val = raw_probs[i]
-                    display_probs.append(val * 100 if val <= 1 else val)
-                else:
-                    display_probs.append(0.0)
-
-            chart_df = pd.DataFrame({
-                'Celestial Type': target_labels,
-                'Confidence (%)': display_probs
-            })
-
-            # Using Plotly for a more "previous version" professional look
-            import plotly.express as px
-            fig = px.bar(
-                chart_df, 
-                x='Celestial Type', 
-                y='Confidence (%)',
-                color='Celestial Type',
-                color_discrete_map={'GALAXY': '#3b82f6', 'QSO': '#ef4444', 'STAR': '#10b981'},
-                template="plotly_dark"
-            )
-            fig.update_layout(showlegend=False, height=400)
-            st.plotly_chart(fig, use_container_width=True)
+    chart_df = pd.DataFrame({'Type': target_labels, 'Conf %': display_probs})
+    
+    fig = px.bar(chart_df, x='Type', y='Conf %', color='Type',
+                 color_discrete_map={'GALAXY':'#3b82f6','QSO':'#ef4444','STAR':'#10b981'},
+                 template="plotly_dark", yaxis_range=[0,100])
+    st.plotly_chart(fig, use_container_width=True)
 
 with tab_map:
     components.iframe(f"https://www.legacysurvey.org/viewer/?ra={st.session_state.ra}&dec={st.session_state.dec}&layer=ls-dr10&zoom=13", height=700)
