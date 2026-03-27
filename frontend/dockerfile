@@ -8,5 +8,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 2. Copy the frontend folder contents into /app
 COPY frontend/ .
 
-EXPOSE 8501
-CMD ["streamlit", "run", "🪐GalaxEye.py", "--server.port=8501", "--server.address=0.0.0.0"]
+EXPOSE 8080 
+#previously was 8501, but streamlit is now configured to run on 8080
+CMD ["streamlit", "run", "🪐GalaxEye.py", "--server.port=8080", "--server.address=0.0.0.0"]
