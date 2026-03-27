@@ -396,14 +396,13 @@ if st.session_state['prediction_result']:
         r1.metric("Predicted Class", res['prediction'])
         r2.metric("Confidence Score", f"{conf_val:.2f}%")
 
-    # 3. FORCE CHART LABELS
+    # 3. CORRECTED CHART (Fixed yaxis_range error)
     st.write("### 📊 Probability Distribution")
     
-    # Ensure we always show 3 bars
-    target_labels = ['STAR', 'GALAXY', 'QSO'] 
+    # Ensure labels match your specific model order
+    target_labels = ['QSO', 'GALAXY', 'STAR'] 
     raw_probs = res.get('probabilities', [])
     
-    # If the model sends 2 values (like in your screenshot), we pad it
     display_probs = []
     for i in range(len(target_labels)):
         if i < len(raw_probs):
@@ -414,9 +413,26 @@ if st.session_state['prediction_result']:
 
     chart_df = pd.DataFrame({'Type': target_labels, 'Conf %': display_probs})
     
-    fig = px.bar(chart_df, x='Type', y='Conf %', color='Type',
-                 color_discrete_map={'GALAXY':'#3b82f6','QSO':'#ef4444','STAR':'#10b981'},
-                 template="plotly_dark", yaxis_range=[0,100])
+    # Create the figure
+    fig = px.bar(
+        chart_df, 
+        x='Type', 
+        y='Conf %', 
+        color='Type',
+        text=[f"{p:.1f}%" for p in display_probs], # Adds percentage labels on top of bars
+        color_discrete_map={'GALAXY':'#3b82f6','QSO':'#ef4444','STAR':'#10b981'},
+        template="plotly_dark"
+    )
+
+    # Correct way to set the Y-axis range and clean up the look
+    fig.update_layout(
+        showlegend=False, 
+        height=450,
+        yaxis_title="Confidence Level (%)",
+        xaxis_title="Celestial Classification",
+        yaxis=dict(range=[0, 100]) # This replaces the broken yaxis_range
+    )
+    
     st.plotly_chart(fig, use_container_width=True)
 
 with tab_map:
