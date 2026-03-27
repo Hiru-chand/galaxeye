@@ -377,6 +377,7 @@ with tab_input:
             # st.bar_chart(chart_data)
 
         # --- RESULTS & ANOMALY DETECTION ---
+        import plotly.express as px
 if st.session_state['prediction_result']:
     res = st.session_state['prediction_result']
     st.divider()
@@ -399,7 +400,7 @@ if st.session_state['prediction_result']:
     st.write("### 📊 Probability Distribution")
     
     # Ensure we always show 3 bars
-    target_labels = ['GALAXY', 'QSO', 'STAR'] 
+    target_labels = ['STAR', 'GALAXY', 'QSO'] 
     raw_probs = res.get('probabilities', [])
     
     # If the model sends 2 values (like in your screenshot), we pad it
